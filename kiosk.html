@@ -69,9 +69,20 @@
 
   /* Active call */
   #call-screen { position: relative; }
-  #remote-video {
-    width: 100%; height: 100%; object-fit: cover;
+  #video-container {
+    flex: 1;
+    width: 100%;
+    position: relative;
     background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #remote-video, #video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
   #local-pip {
     position: absolute; bottom: 120px; right: 24px;
@@ -133,7 +144,9 @@
 
 <!-- SCREEN 3: Active call -->
 <div id="call-screen">
-  <video id="remote-video" autoplay playsinline></video>
+  <div id="video-container">
+    <video id="remote-video" autoplay playsinline></video>
+  </div>
   <div id="local-pip">
     <video id="local-video" autoplay muted playsinline></video>
   </div>
@@ -160,11 +173,12 @@
 <script>
 const LivekitClient = window.LivekitClient;
 
-// Orchestrator API base URL — kiosk connects to the Mac Mini on the centre LAN
-// In production, this would be set by the kiosk app config
-const API_BASE = window.location.hostname === 'localhost'
-  ? ''  // same-origin when served locally
-  : 'https://timmys-mac-mini.tail33631c.ts.net:8200';
+// Orchestrator API base URL
+// When served from the orchestrator itself (same origin), use relative paths
+// When hosted externally (e.g., GitHub Pages), point to the orchestrator
+const API_BASE = window.location.port === '8200' || window.location.hostname === 'localhost'
+  ? ''  // same-origin — page served by the orchestrator
+  : `${window.location.protocol}//${window.location.hostname}:8200`;
 
 // LiveKit URL — set by API response (supports LiveKit Cloud or self-hosted)
 let LIVEKIT_URL = '';
@@ -269,9 +283,11 @@ async function connectToRoom(token) {
         const el = track.attach();
         el.style.width = '100%';
         el.style.height = '100%';
-        el.style.objectFit = 'cover';
-        const container = document.getElementById('remote-video');
-        container.replaceWith(el);
+        el.style.objectFit = 'contain';
+        const container = document.getElementById('video-container');
+        const old = container.querySelector('video');
+        if (old) old.remove();
+        container.appendChild(el);
         el.id = 'remote-video';
       } else if (track.kind === 'audio') {
         const el = track.attach();
